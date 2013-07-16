@@ -38,6 +38,7 @@ import java.util.logging.Logger;
 import ch.ethz.inf.vs.californium.layers.CoapStack;
 import ch.ethz.inf.vs.californium.layers.HttpStack;
 import ch.ethz.inf.vs.californium.layers.Layer;
+import ch.ethz.inf.vs.californium.layers.MultiInterfaceUDPLayer;
 import ch.ethz.inf.vs.californium.layers.UpperLayer;
 import ch.ethz.inf.vs.californium.util.Properties;
 
@@ -170,6 +171,9 @@ public final class CommunicatorFactory {
 		 * @return the port
 		 */
 		int getPort(boolean isHttpPort);
+		
+		public MultiInterfaceUDPLayer getMultiInterfaceUDPLayer();
+			
 	}
 
 	/**
@@ -181,6 +185,8 @@ public final class CommunicatorFactory {
 			Communicator {
 
 		private final int udpPort;
+		
+		private final CoapStack coapStack;
 
 		/**
 		 * Instantiates a new common communicator.
@@ -199,7 +205,7 @@ public final class CommunicatorFactory {
 		public CommonCommunicator(int udpPort, boolean runAsDaemon, int transferBlockSize, int requestPerSecond, boolean isSecured) throws SocketException {
 			this.udpPort = udpPort;
 
-			CoapStack coapStack = new CoapStack(udpPort, runAsDaemon, transferBlockSize, requestPerSecond, isSecured);
+			coapStack = new CoapStack(udpPort, runAsDaemon, transferBlockSize, requestPerSecond, isSecured);
 			setLowerLayer(coapStack);
 		}
 
@@ -263,6 +269,11 @@ public final class CommunicatorFactory {
 				// delegate to first layer
 				sendMessageOverLowerLayer(msg);
 			}
+		}
+
+		@Override
+		public MultiInterfaceUDPLayer getMultiInterfaceUDPLayer() {
+			return coapStack.getMultiInterfaceUDPLayer();
 		}
 	}
 
@@ -398,6 +409,11 @@ public final class CommunicatorFactory {
 				LOG.info("Incoming message, sending to coap stack");
 				coapStack.sendMessage(message);
 			}
+		}
+
+		@Override
+		public MultiInterfaceUDPLayer getMultiInterfaceUDPLayer() {
+			return null;
 		}
 	}
 }
