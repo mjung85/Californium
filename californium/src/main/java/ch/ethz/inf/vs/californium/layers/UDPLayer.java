@@ -51,6 +51,7 @@ import ch.ethz.inf.vs.californium.util.Properties;
  * The UDPLayer is the base layer of the stack, sub-classing
  * {@link AbstractLayer}. Any {@link UpperLayer} can be stacked on top, using a
  * {@link ch.ethz.inf.vs.californium.coap.Communicator} as stack builder.
+ *
  * 
  * @author Dominique Im Obersteg, Daniel Pauli, and Matthias Kovatsch
  */
