@@ -65,12 +65,12 @@ public class CoapStack extends UpperLayer {
 		// AdverseLayer adverseLayer = new AdverseLayer();
 		// RateControlLayer rateControlLayer = new
 		// RateControlLayer(requestPerSecond);
-		UDPLayer udpLayer = null;
+		MultiInterfaceUDPLayer udpLayer = null;
 		DTLSLayer dtlsLayer = null;
 		if (isSecured) {
 			dtlsLayer = new DTLSLayer(udpPort, runAsDaemon);
 		} else {
-			udpLayer = new UDPLayer(udpPort, runAsDaemon);
+			udpLayer = new MultiInterfaceUDPLayer(udpPort, runAsDaemon);
 		}
 
 		// connect layers

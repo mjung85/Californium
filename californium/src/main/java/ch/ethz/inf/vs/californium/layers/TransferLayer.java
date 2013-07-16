@@ -158,6 +158,7 @@ public class TransferLayer extends UpperLayer {
 			Message msgBlock = getBlock(msg, sendNUM, sendSZX);
 			
             if (msgBlock != null) {
+            	msgBlock.setNetworkInterface(msg.getNetworkInterface());
 
 				BlockOption block1 = (BlockOption) msgBlock.getFirstOption(OptionNumberRegistry.BLOCK1);
 				BlockOption block2 = (BlockOption) msgBlock.getFirstOption(OptionNumberRegistry.BLOCK2);
@@ -253,6 +254,7 @@ public class TransferLayer extends UpperLayer {
 							
 						try {
 							LOG.finer(String.format("Sending next block: %s | %s", next.sequenceKey(), blockOut));
+							next.setNetworkInterface(msg.getNetworkInterface());
 							sendMessageOverLowerLayer(next);
 						} catch (IOException e) {
 							LOG.severe(String.format("Failed to send block response: %s", e.getMessage()));
@@ -374,6 +376,7 @@ public class TransferLayer extends UpperLayer {
 				reply.setUriPath(transfer.uriPath);
 				reply.setUriQuery(transfer.uriQuery);
 				
+				
 				// get next block
 				++demandNUM;
 
@@ -400,6 +403,7 @@ public class TransferLayer extends UpperLayer {
 			// echo options
 			reply.setOption(msg.getFirstOption(OptionNumberRegistry.TOKEN));
 			reply.setOption(next);
+			reply.setNetworkInterface(msg.getNetworkInterface());
 
 			try {
 				
