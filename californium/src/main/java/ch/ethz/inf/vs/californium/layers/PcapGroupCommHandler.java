@@ -1,3 +1,4 @@
+
 package ch.ethz.inf.vs.californium.layers;
 
 import java.io.IOException;
@@ -27,15 +28,47 @@ public class PcapGroupCommHandler<String> extends AbstractLayer implements
 	}
 
 	public void nextPacket(PcapPacket packet, String user) {
-		System.out.println("## packet received.");
-		System.out.println("## UDP.ID: " + Udp.ID  + ", IP6.ID:" + Ip6.ID);
-		int count = packet.getHeaderCount();
-		for (int i = 0 ; i < count; i++){
-			System.out.println("header id: " + packet.getHeaderIdByIndex(i));
+		if(packet.getHeaderCount() == 1){ // indication for tunnel packet
+			// the payload might be directly an ipv6 packet
+			if(packet.getByte(0) >> 4 == 6 && packet.size() > 48){ // ipv6 version, at least ipv6 and udp header
+				byte[] srcAddressByte = new byte[16];
+				packet.getByteArray(8, srcAddressByte);
+				byte[] destAddress = new byte[16];
+				byte[] payload = new byte[packet.size() - 48]; // everything beside IPv6 and UDP header
+				packet.getByteArray(24, destAddress);
+				try {
+					Inet6Address srcIpv6 = (Inet6Address) Inet6Address.getByAddress(srcAddressByte);
+					Inet6Address destIpv6 = (Inet6Address) Inet6Address.getByAddress(destAddress);
+					// extract udp header (4 byte)
+					byte[] destPortBytes = new byte[2];
+					packet.getByteArray(42
+							, destPortBytes);
+					
+					byte[] srcPortBytes = new byte[2];
+					packet.getByteArray(40
+							, destPortBytes);
+		
+		
+					Integer srcPort = srcPortBytes[0] * 256 + srcPortBytes[1];
+					Integer destPort = destPortBytes[0] * 256 + destPortBytes[1];
+					
+					packet.getByteArray(48, payload);
+					
+					if (destPort == this.port && destIpv6.isMulticastAddress()) 
+					{
+						log.info("Received multicast message through PCAP (over tunnel adapter)s.");
+						RequestReceiver recv = new RequestReceiver(destIpv6, srcIpv6, srcPort, payload);
+						recv.start();
+					}
+											
+				} catch (UnknownHostException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
 		}
-		System.out.println(packet.getState().toDebugString());
+		
 		if (packet.hasHeader(Udp.ID) && packet.hasHeader(Ip6.ID)) {
-			System.out.println("## IPv6 UDP packet received.");
 			Ip6 ipv6 = packet.getHeader(new Ip6());
 			Udp udp = packet.getHeader(new Udp());
 			byte[] destination = ipv6.destination();
@@ -49,13 +82,13 @@ public class PcapGroupCommHandler<String> extends AbstractLayer implements
 				e.printStackTrace();
 			}
 
-			if (udp.destination() == this.port && dest.isMulticastAddress()) {
+			if (udp.destination() == this.port && dest.isMulticastAddress()) 
 				{
 					log.info("Received multicast message through PCAP.");
 					RequestReceiver recv = new RequestReceiver(dest, src, udp.source(), udp.getPayload());
 					recv.start();
 				}
-			}
+			
 		}
 	}
 
