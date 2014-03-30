@@ -352,6 +352,22 @@ public class Request extends Message {
 		}
 		respond(response);
 	}
+	
+	/**
+	 * Added by MJ.
+	 * Allow byte[] payload.
+	 */
+	public void respond(int code, byte[] payload, int contentType){
+		Response response  = new Response(code);
+		
+		if(payload != null){
+			response.setPayload(payload);
+			response.setContentType(contentType);
+
+			LOG.finest(String.format("Responding with Content-Type %d: %d bytes", contentType, payload.length));
+		}
+		respond(response);
+	}
 
 	/**
 	 * Issues a new response to this request
@@ -363,6 +379,8 @@ public class Request extends Message {
 
 		// assign response to this request
 		response.setRequest(this);
+		
+		response.setNetworkInterface(this.getNetworkInterface());
 
 		response.setPeerAddress(getPeerAddress());
 

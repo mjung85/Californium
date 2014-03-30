@@ -34,6 +34,7 @@ package ch.ethz.inf.vs.californium.coap;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.UnsupportedEncodingException;
+import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLDecoder;
@@ -129,9 +130,12 @@ public class Message {
 	 */
 	protected boolean requiresToken = true;
 	protected boolean requiresBlockwise = false;
-	
+
 	/** Is set to <code>true</code> if the URI scheme equals <code>coaps</code>. Only needed for client side. */
 	protected boolean requiresSecurity = false;
+	
+	// Interface at which the message has been recevied.
+	private InetAddress networkInterface = null;
 
 	/**
 	 * The message code: 0: Empty 1-31: Request 64-191: Response
@@ -1374,5 +1378,13 @@ public class Message {
 	 */
 	public enum messageType {
 		CON, NON, ACK, RST
+	}
+	
+	public InetAddress getNetworkInterface() {
+		return networkInterface;
+	}
+
+	public void setNetworkInterface(InetAddress networkInterface) {
+		this.networkInterface = networkInterface;
 	}
 }

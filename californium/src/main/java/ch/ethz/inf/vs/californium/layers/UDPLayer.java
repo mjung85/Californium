@@ -34,6 +34,7 @@ package ch.ethz.inf.vs.californium.layers;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.InetAddress;
 import java.net.SocketException;
 import java.util.Arrays;
 import java.util.logging.Level;
@@ -51,6 +52,7 @@ import ch.ethz.inf.vs.californium.util.Properties;
  * The UDPLayer is the base layer of the stack, sub-classing
  * {@link AbstractLayer}. Any {@link UpperLayer} can be stacked on top, using a
  * {@link ch.ethz.inf.vs.californium.coap.Communicator} as stack builder.
+ *
  * 
  * @author Dominique Im Obersteg, Daniel Pauli, and Matthias Kovatsch
  */
@@ -59,6 +61,8 @@ public class UDPLayer extends AbstractLayer {
 	private static final int BUFFER_SIZE = Properties.std.getInt("RX_BUFFER_SIZE");
 
 	private final static int RECEIVER_BUFFER_SIZE = BUFFER_SIZE + 1;
+	
+	
 
 	// Members
 	// /////////////////////////////////////////////////////////////////////
@@ -69,6 +73,9 @@ public class UDPLayer extends AbstractLayer {
 
 	// The thread that listens on the socket for incoming datagrams
 	private final ReceiverThread receiverThread;
+	
+	// explicitly bound server address
+	private InetAddress inetAddress;
 
 	// Inner Classes
 	// ///////////////////////////////////////////////////////////////
@@ -103,6 +110,30 @@ public class UDPLayer extends AbstractLayer {
 		receiverThread.start();
 
 	}
+	
+	/*
+	 * Constructor for a new UDP layer
+	 * 
+	 * @param inetAddress specific address to be bound to
+	 * @param port The local UDP port to listen for incoming messages
+	 * @param daemon True if receiver thread should terminate with main thread
+	 */
+	public UDPLayer(InetAddress inetAddress, int port, boolean daemon) throws SocketException {	
+		// initialize members	
+		this.inetAddress = inetAddress;
+			
+		this.socket = new DatagramSocket( port, inetAddress);
+		this.socket.setReuseAddress(true);
+
+		this.receiverThread = new ReceiverThread();
+
+		// decide if receiver thread terminates with main thread
+		receiverThread.setDaemon(daemon);
+
+		// start listening right from the beginning
+		this.receiverThread.start();
+	}
+
 
 	public int getPort() {
 		return socket.getLocalPort();
@@ -168,12 +199,15 @@ public class UDPLayer extends AbstractLayer {
 			Message msg = Message.fromByteArray(data);
 
 			if (msg != null) {
+				// set the interface on which the message was received
+				msg.setNetworkInterface(inetAddress);
 
 				// remember when this message was received
 				msg.setTimestamp(timestamp);
 
 				msg.setPeerAddress(new EndpointAddress(datagram.getAddress(), datagram.getPort()));
-
+				
+				
 				if (datagram.getLength() > BUFFER_SIZE) {
 					LOG.info(String.format("Marking large datagram for blockwise transfer: %s", msg.key()));
 					msg.requiresBlockwise(true);
@@ -292,5 +326,9 @@ public class UDPLayer extends AbstractLayer {
 				datagramReceived(datagram);
 			}
 		}
+	}
+	
+	public InetAddress getInetAddress(){
+		return inetAddress;
 	}
 }

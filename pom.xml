@@ -83,6 +83,18 @@
 					<encoding>${project.build.sourceEncoding}</encoding>
 				</configuration>
 			</plugin>
+			
+			<plugin>
+				<!-- NOTE: We don't need a groupId specification because the group is 
+					org.apache.maven.plugins ...which is assumed by default. -->
+				<artifactId>maven-assembly-plugin</artifactId>
+				<version>2.4</version>
+				<configuration>
+					<descriptorRefs>
+						<descriptorRef>jar-with-dependencies</descriptorRef>
+					</descriptorRefs>
+				</configuration>
+			</plugin>
 		</plugins>
 	</build>
 
@@ -104,6 +116,11 @@
 			<id>thirdparty</id>
 			<name>thingml-snapshot</name>
 			<url>http://maven.thingml.org/thirdparty/</url>
+		</repository>
+		
+		<repository>
+			<id>my-local-repo</id>
+			<url>file://${basedir}/californium/lib/repo</url>
 		</repository>
 	</repositories>
 

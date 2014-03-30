@@ -40,6 +40,7 @@ import java.net.SocketException;
  * @author Francesco Corazza
  */
 public class CoapStack extends UpperLayer {
+	private MultiInterfaceUDPLayer multiInterfaceUDPLayer;
 
 	/**
 	 * Instantiates a new coap stack.
@@ -65,12 +66,12 @@ public class CoapStack extends UpperLayer {
 		// AdverseLayer adverseLayer = new AdverseLayer();
 		// RateControlLayer rateControlLayer = new
 		// RateControlLayer(requestPerSecond);
-		UDPLayer udpLayer = null;
+		multiInterfaceUDPLayer = null;
 		DTLSLayer dtlsLayer = null;
 		if (isSecured) {
 			dtlsLayer = new DTLSLayer(udpPort, runAsDaemon);
 		} else {
-			udpLayer = new UDPLayer(udpPort, runAsDaemon);
+			multiInterfaceUDPLayer = new MultiInterfaceUDPLayer(udpPort, runAsDaemon);
 		}
 
 		// connect layers
@@ -81,7 +82,7 @@ public class CoapStack extends UpperLayer {
 		if (isSecured) {
 			transactionLayer.setLowerLayer(dtlsLayer);
 		} else {
-			transactionLayer.setLowerLayer(udpLayer);
+			transactionLayer.setLowerLayer(multiInterfaceUDPLayer);
 		}
 
 		// transactionLayer.setLowerLayer(rateControlLayer);
@@ -91,5 +92,9 @@ public class CoapStack extends UpperLayer {
 		// adverseLayer.setLowerLayer(udpLayer);
 		
 		LOG.info((isSecured) ? "CoapStack (secured) started" : "CoapStack started");
+	}
+	
+	public MultiInterfaceUDPLayer getMultiInterfaceUDPLayer(){
+		return multiInterfaceUDPLayer;
 	}
 }

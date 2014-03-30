@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
   <name>cf-rd</name>
-  <comment>Californium (Cf) Resource Directory.</comment>
+  <comment>Californium (Cf) Resource Directory. NO_M2ECLIPSE_SUPPORT: Project files created with the maven-eclipse-plugin are not supported in M2Eclipse.</comment>
   <projects>
     <project>californium</project>
   </projects>
