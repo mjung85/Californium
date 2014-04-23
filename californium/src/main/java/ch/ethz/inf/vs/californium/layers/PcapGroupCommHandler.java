@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.Arrays;
 import java.util.logging.Logger;
 
 import org.jnetpcap.packet.PcapPacket;
@@ -16,7 +15,6 @@ import org.jnetpcap.protocol.tcpip.Udp;
 import ch.ethz.inf.vs.californium.coap.EndpointAddress;
 import ch.ethz.inf.vs.californium.coap.Message;
 import ch.ethz.inf.vs.californium.layers.MulticastUDPLayer.REQUEST_TYPE;
-import ch.ethz.inf.vs.californium.util.Properties;
 
 public class PcapGroupCommHandler<String> extends AbstractLayer implements
 		PcapPacketHandler<String> {
@@ -24,11 +22,14 @@ public class PcapGroupCommHandler<String> extends AbstractLayer implements
 	private static final Logger log = Logger.getLogger(PcapGroupCommHandler.class.getName());
 
 	public PcapGroupCommHandler(int port) {
-		this.port = port;
+		if(port != 0)
+			this.port = port;
 	}
 
 	public void nextPacket(PcapPacket packet, String user) {
+		
 		if(packet.getHeaderCount() == 1){ // indication for tunnel packet
+			log.info("Packet received through PCAP (tunnel packet).");
 			// the payload might be directly an ipv6 packet
 			if(packet.getByte(0) >> 4 == 6 && packet.size() > 48){ // ipv6 version, at least ipv6 and udp header
 				byte[] srcAddressByte = new byte[16];
@@ -56,6 +57,7 @@ public class PcapGroupCommHandler<String> extends AbstractLayer implements
 					
 					if (destPort == this.port && destIpv6.isMulticastAddress()) 
 					{
+						
 						log.info("Received multicast message through PCAP (over tunnel adapter)s.");
 						RequestReceiver recv = new RequestReceiver(destIpv6, srcIpv6, srcPort, payload);
 						recv.start();
