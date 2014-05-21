@@ -90,6 +90,10 @@ public class MultiInterfaceUDPLayer extends AbstractLayer {
 
 		PCAP_IF = Properties.std.getProperty("iotsys.gateway.pcap.if", "eth0");
 		MCAST_ENABLED = Boolean.parseBoolean(Properties.std.getProperty("iotsys.gateway.mcast", "true"));
+		
+		log.info("### PCAP_ENABLED: " + PCAP_ENABLED);
+		log.info("### PCAP_IF: " + PCAP_IF);
+		log.info("### MCAST_ENABLED: " + MCAST_ENABLED);
 
 		// for multicast group communication use
 		// pcap or multicast datagram sockets
@@ -135,7 +139,7 @@ public class MultiInterfaceUDPLayer extends AbstractLayer {
 					log.info("Cannot listen.");
 				}
 				final PcapGroupCommHandler<String> pcapGroupCommHandler = new PcapGroupCommHandler<String>(
-						port);
+						port, pcap);
 				pcapGroupCommHandler.registerReceiver(this);
 
 				Thread packetlistener = new Thread() {

@@ -7,6 +7,8 @@ import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.logging.Logger;
 
+import org.jnetpcap.Pcap;
+import org.jnetpcap.packet.JRegistry;
 import org.jnetpcap.packet.PcapPacket;
 import org.jnetpcap.packet.PcapPacketHandler;
 import org.jnetpcap.protocol.network.Ip6;
@@ -20,13 +22,19 @@ import ch.ethz.inf.vs.californium.util.Properties;
 public class PcapGroupCommHandler<String> extends AbstractLayer implements
 		PcapPacketHandler<String> {
 	private int port = 5683;
+	private Pcap pcap = null;
 	private static final Logger log = Logger.getLogger(PcapGroupCommHandler.class.getName());
 
-	public PcapGroupCommHandler(int port) {
+	public PcapGroupCommHandler(int port, Pcap pcap) {
 		this.port = port;
+		this.pcap = pcap;
 	}
 
 	public void nextPacket(PcapPacket packet, String user) {
+		
+		// map pcap's data-link-type to jNetPcap's protocol IDs
+		int idDLT = JRegistry.mapDLTToId(pcap.datalink());
+		packet.scan(idDLT);
 		if (packet.hasHeader(Udp.ID) && packet.hasHeader(Ip6.ID)) {
 			Ip6 ipv6 = packet.getHeader(new Ip6());
 			Udp udp = packet.getHeader(new Udp());
