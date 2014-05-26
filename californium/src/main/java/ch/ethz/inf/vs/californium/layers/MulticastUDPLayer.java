@@ -1,17 +1,20 @@
 package ch.ethz.inf.vs.californium.layers;
 
+import java.io.FileWriter;
 import java.io.IOException;
 import java.net.DatagramPacket;
-import java.net.DatagramSocket;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.MulticastSocket;
-import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.util.Arrays;
-import java.util.Enumeration;
+import java.util.HashSet;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.logging.Logger;
+
+import com.csvreader.CsvWriter;
 
 import ch.ethz.inf.vs.californium.coap.EndpointAddress;
 import ch.ethz.inf.vs.californium.coap.Message;
@@ -35,6 +38,15 @@ public class MulticastUDPLayer extends AbstractLayer {
 	private InetAddress inetAddress;
 
 	private Inet6Address group;
+	
+	// limit to 5 concurrent requests
+	private ExecutorService executor = Executors.newFixedThreadPool(5);
+		
+	private final HashSet<Thread> workerThreads = new HashSet<Thread>();
+	
+	private CsvWriter perfLog;
+	
+	private volatile int numRequest = 0;	
 
 	private static ThreadLocal<REQUEST_TYPE> uniqueRequestType = new ThreadLocal<REQUEST_TYPE>() {
 		@Override
@@ -115,6 +127,28 @@ public class MulticastUDPLayer extends AbstractLayer {
 
 		public void stopReceiver() {
 			stop = true;
+			
+			try {
+				long totalCPUTime = 0;
+				System.out.println("Shutdown called!");
+				synchronized(workerThreads){
+					System.out.println("There are " + workerThreads.size() + " worker threads.");
+					for(Thread thread : workerThreads){				
+						System.out.println("Thread ID: " + thread.getId() + ", " + 	EvaluationUtil.getCpuTime(thread.getId()));
+						totalCPUTime += EvaluationUtil.getCpuTime(thread.getId());
+					}
+				}
+				
+				System.out.println("total CPU Time: " + totalCPUTime);
+				double cpuTimePerRequest = ((double) totalCPUTime / numRequest) / 1000000; // nanoseconds to milliseconds 
+				System.out.println("cpu time per request: " + cpuTimePerRequest + ", " + totalCPUTime / numRequest);						
+
+				perfLog.writeRecord(new String[]{"" + totalCPUTime, "" + numRequest, "" + cpuTimePerRequest});
+				executor.shutdown();
+				perfLog.close();
+			} catch (IOException ioe) {
+				ioe.printStackTrace();
+			} 
 		}
 	}
 
@@ -133,7 +167,7 @@ public class MulticastUDPLayer extends AbstractLayer {
 		// initialize members
 
 		try {
-
+			perfLog = new CsvWriter(new FileWriter("./coap_perf_log.csv", false), ';');	
 			// join IPv6 Multicast on all interfaces
 
 			// List<InetSocketAddress> multicastSockets = new
@@ -143,7 +177,6 @@ public class MulticastUDPLayer extends AbstractLayer {
 			 5683);
 			this.group = ipv6MulticastAddress;
 
-			
 			this.socket = new MulticastSocket(null);					
 			this.socket.setReuseAddress(true);
 			this.socket.joinGroup(group);
@@ -173,7 +206,8 @@ public class MulticastUDPLayer extends AbstractLayer {
 		receiverThread.setDaemon(daemon);
 
 		// start listening right from the beginning
-		this.receiverThread.start();
+		//this.receiverThread.start();
+		executor.execute(receiverThread);
 
 	}
 
@@ -207,7 +241,8 @@ public class MulticastUDPLayer extends AbstractLayer {
 
 	@Override
 	protected void doSendMessage(Message msg) throws IOException {
-
+		// sending response
+		
 		// retrieve payload
 		byte[] payload = msg.toByteArray();
 
@@ -229,6 +264,7 @@ public class MulticastUDPLayer extends AbstractLayer {
 
 	@Override
 	protected void doReceiveMessage(Message msg) {
+		numRequest++;
 		deliverMessage(msg);
 	}
 
@@ -236,7 +272,7 @@ public class MulticastUDPLayer extends AbstractLayer {
 	// ////////////////////////////////////////////////////////////////////
 
 	private void datagramReceived(DatagramPacket datagram) {
-		
+		// datagram received -> log starting time
 
 		if (datagram.getLength() > 0) {
 

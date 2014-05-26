@@ -31,13 +31,19 @@
 
 package ch.ethz.inf.vs.californium.layers;
 
+import java.io.FileWriter;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.logging.Level;
+
+import com.csvreader.CsvWriter;
 
 import ch.ethz.inf.vs.californium.coap.EndpointAddress;
 import ch.ethz.inf.vs.californium.coap.Message;
@@ -62,7 +68,14 @@ public class UDPLayer extends AbstractLayer {
 
 	private final static int RECEIVER_BUFFER_SIZE = BUFFER_SIZE + 1;
 	
+	// limit to 5 concurrent requests
+	private ExecutorService executor = Executors.newFixedThreadPool(5);
+		
+	private final HashSet<Thread> workerThreads = new HashSet<Thread>();
 	
+	private CsvWriter perfLog;
+	
+	private volatile int numRequest = 0;
 
 	// Members
 	// /////////////////////////////////////////////////////////////////////
@@ -99,6 +112,13 @@ public class UDPLayer extends AbstractLayer {
 	 *            True if receiver thread should terminate with main thread
 	 */
 	public UDPLayer(int port, boolean daemon) throws SocketException {
+		
+		try {
+			perfLog = new CsvWriter(new FileWriter("./coap_udp_perf_log.csv", false), ';');
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}	
 		// initialize members
 		socket = new DatagramSocket(port);
 		receiverThread = new ReceiverThread();
@@ -107,7 +127,8 @@ public class UDPLayer extends AbstractLayer {
 		receiverThread.setDaemon(daemon);
 
 		// start listening right from the beginning
-		receiverThread.start();
+		//receiverThread.start();
+		executor.execute(receiverThread);
 
 	}
 	
@@ -257,6 +278,33 @@ public class UDPLayer extends AbstractLayer {
 
 	@Override
 	protected void doReceiveMessage(Message msg) {
+		numRequest++;
+		if(numRequest == 1000){
+			long totalCPUTime = 0;
+			System.out.println("Shutdown called!");
+			synchronized(workerThreads){
+				System.out.println("There are " + workerThreads.size() + " worker threads.");
+				for(Thread thread : workerThreads){				
+					System.out.println("Thread ID: " + thread.getId() + ", " + 	EvaluationUtil.getCpuTime(thread.getId()));
+					totalCPUTime += EvaluationUtil.getCpuTime(thread.getId());
+				}
+			}
+			
+			System.out.println("total CPU Time: " + totalCPUTime);
+			double cpuTimePerRequest = ((double) totalCPUTime / numRequest) / 1000000; // nanoseconds to milliseconds 
+			System.out.println("cpu time per request: " + cpuTimePerRequest + ", " + totalCPUTime / numRequest);
+			
+
+			try {
+				perfLog.writeRecord(new String[]{"" + totalCPUTime, "" + numRequest, "" + cpuTimePerRequest});
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			executor.shutdown();
+			perfLog.close();
+			System.exit(0);
+		}
 		if (LOG.getLevel() == Level.FINEST) {
 			System.out.println("  ___________________");
 			System.out.println(" / RECEIVED over UDP \\");

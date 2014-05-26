@@ -1,16 +1,23 @@
 
 package ch.ethz.inf.vs.californium.layers;
 
+import java.io.FileWriter;
 import java.io.IOException;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.HashSet;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.logging.Logger;
 
 import org.jnetpcap.packet.PcapPacket;
 import org.jnetpcap.packet.PcapPacketHandler;
 import org.jnetpcap.protocol.network.Ip6;
 import org.jnetpcap.protocol.tcpip.Udp;
+
+
+import com.csvreader.CsvWriter;
 
 import ch.ethz.inf.vs.californium.coap.EndpointAddress;
 import ch.ethz.inf.vs.californium.coap.Message;
@@ -20,10 +27,26 @@ public class PcapGroupCommHandler<String> extends AbstractLayer implements
 		PcapPacketHandler<String> {
 	private int port = 5683;
 	private static final Logger log = Logger.getLogger(PcapGroupCommHandler.class.getName());
+	
+	// limit to 5 concurrent requests
+	private ExecutorService executor = Executors.newFixedThreadPool(5);
+			
+	private final HashSet<Thread> workerThreads = new HashSet<Thread>();
+		
+	private CsvWriter perfLog;
+		
+	private volatile int numRequest = 0;
 
 	public PcapGroupCommHandler(int port) {
 		if(port != 0)
 			this.port = port;
+		
+		try {
+			perfLog = new CsvWriter(new FileWriter("./coap_gc_perf_log.csv", false), ';');
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 	public void nextPacket(PcapPacket packet, String user) {
@@ -48,8 +71,7 @@ public class PcapGroupCommHandler<String> extends AbstractLayer implements
 					byte[] srcPortBytes = new byte[2];
 					packet.getByteArray(40
 							, destPortBytes);
-		
-		
+			
 					Integer srcPort = srcPortBytes[0] * 256 + srcPortBytes[1];
 					Integer destPort = destPortBytes[0] * 256 + destPortBytes[1];
 					
@@ -57,10 +79,35 @@ public class PcapGroupCommHandler<String> extends AbstractLayer implements
 					
 					if (destPort == this.port && destIpv6.isMulticastAddress()) 
 					{
-						
+						numRequest++;
 						log.info("Received multicast message through PCAP (over tunnel adapter)s.");
 						RequestReceiver recv = new RequestReceiver(destIpv6, srcIpv6, srcPort, payload);
-						recv.start();
+						executor.execute(recv);
+						if(numRequest == 1000){
+							long totalCPUTime = 0;
+							System.out.println("Shutdown called!");
+							synchronized(workerThreads){
+								System.out.println("There are " + workerThreads.size() + " worker threads.");
+								for(Thread thread : workerThreads){				
+									System.out.println("Thread ID: " + thread.getId() + ", " + 	EvaluationUtil.getCpuTime(thread.getId()));
+									totalCPUTime += EvaluationUtil.getCpuTime(thread.getId());
+								}
+							}
+							
+							System.out.println("total CPU Time: " + totalCPUTime);
+							double cpuTimePerRequest = ((double) totalCPUTime / numRequest) / 1000000; // nanoseconds to milliseconds 
+							System.out.println("cpu time per request: " + cpuTimePerRequest + ", " + totalCPUTime / numRequest);
+							
+						
+							try {
+								perfLog.writeRecord( new java.lang.String[]{"" + totalCPUTime,"" + numRequest, "" + cpuTimePerRequest});
+							} catch (IOException e) {
+								// TODO Auto-generated catch block
+								e.printStackTrace();
+							}
+							executor.shutdown();
+							perfLog.close();
+						}
 					}
 											
 				} catch (UnknownHostException e) {
