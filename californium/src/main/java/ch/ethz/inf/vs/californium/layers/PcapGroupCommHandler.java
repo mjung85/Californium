@@ -11,6 +11,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.Logger;
 
+import org.jnetpcap.Pcap;
+import org.jnetpcap.packet.JRegistry;
 import org.jnetpcap.packet.PcapPacket;
 import org.jnetpcap.packet.PcapPacketHandler;
 import org.jnetpcap.protocol.network.Ip6;
@@ -33,13 +35,16 @@ public class PcapGroupCommHandler<String> extends AbstractLayer implements
 	private final HashSet<Thread> workerThreads = new HashSet<Thread>();
 		
 	private CsvWriter perfLog;
+	
+	private Pcap pcap = null;
 		
 	private volatile int numRequest = 0;
 
-	public PcapGroupCommHandler(int port) {
+	public PcapGroupCommHandler(int port, Pcap pcac) {
 		if(port != 0)
 			this.port = port;
 		
+		this.pcap = pcap;
 		try {
 			perfLog = new CsvWriter(new FileWriter("./coap_gc_perf_log.csv", false), ';');
 		} catch (IOException e) {
@@ -49,7 +54,9 @@ public class PcapGroupCommHandler<String> extends AbstractLayer implements
 	}
 
 	public void nextPacket(PcapPacket packet, String user) {
-		
+		// map pcap's data-link-type to jNetPcap's protocol IDs
+		int idDLT = JRegistry.mapDLTToId(pcap.datalink());
+		packet.scan(idDLT);
 		if(packet.getHeaderCount() == 1){ // indication for tunnel packet
 			log.info("Packet received through PCAP (tunnel packet).");
 			// the payload might be directly an ipv6 packet

@@ -134,8 +134,8 @@ public class MultiInterfaceUDPLayer extends AbstractLayer {
 				if (pcap == null) {
 					log.info("Cannot listen.");
 				}
-				final PcapGroupCommHandler<String> pcapGroupCommHandler = new PcapGroupCommHandler<String>(
-						port);
+				
+				final PcapGroupCommHandler<String> pcapGroupCommHandler = new PcapGroupCommHandler<String>(port, pcap);
 				pcapGroupCommHandler.registerReceiver(this);
 				log.info("Registered group comm handler.");
 
