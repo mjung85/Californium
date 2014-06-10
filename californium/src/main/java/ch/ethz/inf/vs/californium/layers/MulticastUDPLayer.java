@@ -96,6 +96,9 @@ public class MulticastUDPLayer extends AbstractLayer {
 
 		@Override
 		public void run() {
+			synchronized(workerThreads){
+				workerThreads.add(Thread.currentThread());
+			}
 			setMulticastAddress(MulticastUDPLayer.this.group);
 			setRequestType(REQUEST_TYPE.MULTICAST_REQUEST);
 			// always listen for incoming datagrams
@@ -129,23 +132,25 @@ public class MulticastUDPLayer extends AbstractLayer {
 			stop = true;
 			
 			try {
-				long totalCPUTime = 0;
-				System.out.println("Shutdown called!");
-				synchronized(workerThreads){
-					System.out.println("There are " + workerThreads.size() + " worker threads.");
-					for(Thread thread : workerThreads){				
-						System.out.println("Thread ID: " + thread.getId() + ", " + 	EvaluationUtil.getCpuTime(thread.getId()));
-						totalCPUTime += EvaluationUtil.getCpuTime(thread.getId());
+				if(numRequest > 0){
+					long totalCPUTime = 0;
+					System.out.println("Shutdown called!");
+					synchronized(workerThreads){
+						System.out.println("There are " + workerThreads.size() + " worker threads.");
+						for(Thread thread : workerThreads){				
+							System.out.println("Thread ID: " + thread.getId() + ", " + 	EvaluationUtil.getCpuTime(thread.getId()));
+							totalCPUTime += EvaluationUtil.getCpuTime(thread.getId());
+						}
 					}
+					
+					System.out.println("total CPU Time: " + totalCPUTime);
+					double cpuTimePerRequest = ((double) totalCPUTime / numRequest) / 1000000; // nanoseconds to milliseconds 
+					System.out.println("cpu time per request: " + cpuTimePerRequest + ", " + totalCPUTime / numRequest);						
+	
+					perfLog.writeRecord(new String[]{"" + totalCPUTime, "" + numRequest, "" + cpuTimePerRequest});
+					executor.shutdown();
+					perfLog.close();
 				}
-				
-				System.out.println("total CPU Time: " + totalCPUTime);
-				double cpuTimePerRequest = ((double) totalCPUTime / numRequest) / 1000000; // nanoseconds to milliseconds 
-				System.out.println("cpu time per request: " + cpuTimePerRequest + ", " + totalCPUTime / numRequest);						
-
-				perfLog.writeRecord(new String[]{"" + totalCPUTime, "" + numRequest, "" + cpuTimePerRequest});
-				executor.shutdown();
-				perfLog.close();
 			} catch (IOException ioe) {
 				ioe.printStackTrace();
 			} 
@@ -264,6 +269,7 @@ public class MulticastUDPLayer extends AbstractLayer {
 
 	@Override
 	protected void doReceiveMessage(Message msg) {
+		System.out.println("$$$$$$$$ message received.");
 		numRequest++;
 		deliverMessage(msg);
 	}

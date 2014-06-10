@@ -16,7 +16,6 @@ import org.jnetpcap.packet.PcapPacketHandler;
 import org.jnetpcap.protocol.network.Ip6;
 import org.jnetpcap.protocol.tcpip.Udp;
 
-
 import com.csvreader.CsvWriter;
 
 import ch.ethz.inf.vs.californium.coap.EndpointAddress;
@@ -80,10 +79,11 @@ public class PcapGroupCommHandler<String> extends AbstractLayer implements
 					if (destPort == this.port && destIpv6.isMulticastAddress()) 
 					{
 						numRequest++;
-						log.info("Received multicast message through PCAP (over tunnel adapter)s.");
+						log.info("Received multicast message through PCAP (over tunnel adapter).");
+						System.out.println("Current request: " + numRequest);
 						RequestReceiver recv = new RequestReceiver(destIpv6, srcIpv6, srcPort, payload);
 						executor.execute(recv);
-						if(numRequest == 1000){
+						if(numRequest > 1000){
 							long totalCPUTime = 0;
 							System.out.println("Shutdown called!");
 							synchronized(workerThreads){
@@ -107,10 +107,17 @@ public class PcapGroupCommHandler<String> extends AbstractLayer implements
 							}
 							executor.shutdown();
 							perfLog.close();
+							
+							Thread.sleep(5000);
+							System.exit(0);
 						}
+						
 					}
 											
 				} catch (UnknownHostException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} catch (InterruptedException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
@@ -134,10 +141,45 @@ public class PcapGroupCommHandler<String> extends AbstractLayer implements
 			if (udp.destination() == this.port && dest.isMulticastAddress()) 
 				{
 					log.info("Received multicast message through PCAP.");
+					
+					numRequest++;
+					System.out.println("Num requests is: " + numRequest);
 					RequestReceiver recv = new RequestReceiver(dest, src, udp.source(), udp.getPayload());
-					recv.start();
-				}
-			
+					executor.execute(recv);
+					if(numRequest > 1000){
+						long totalCPUTime = 0;
+						System.out.println("Shutdown called!");
+						synchronized(workerThreads){
+							System.out.println("There are " + workerThreads.size() + " worker threads.");
+							for(Thread thread : workerThreads){				
+								System.out.println("Thread ID: " + thread.getId() + ", " + 	EvaluationUtil.getCpuTime(thread.getId()));
+								totalCPUTime += EvaluationUtil.getCpuTime(thread.getId());
+							}
+						}
+						
+						System.out.println("total CPU Time: " + totalCPUTime);
+						double cpuTimePerRequest = ((double) totalCPUTime / numRequest) / 1000000; // nanoseconds to milliseconds 
+						System.out.println("cpu time per request: " + cpuTimePerRequest + ", " + totalCPUTime / numRequest);
+						
+					
+						try {
+							perfLog.writeRecord( new java.lang.String[]{"" + totalCPUTime,"" + numRequest, "" + cpuTimePerRequest});
+						} catch (IOException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+						executor.shutdown();
+						perfLog.close();
+						
+						try {
+							Thread.sleep(5000);
+						} catch (InterruptedException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+						System.exit(0);
+					}
+				}		
 		}
 	}
 
@@ -159,6 +201,7 @@ public class PcapGroupCommHandler<String> extends AbstractLayer implements
 		}
 
 		public void run() {
+			workerThreads.add(Thread.currentThread());
 			MulticastUDPLayer.setMulticastAddress(groupAddress);
 			MulticastUDPLayer.setRequestType(REQUEST_TYPE.MULTICAST_REQUEST);
 

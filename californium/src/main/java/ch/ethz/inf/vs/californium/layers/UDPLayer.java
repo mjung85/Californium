@@ -141,6 +141,12 @@ public class UDPLayer extends AbstractLayer {
 	 */
 	public UDPLayer(InetAddress inetAddress, int port, boolean daemon) throws SocketException {	
 		// initialize members	
+		try {
+			perfLog = new CsvWriter(new FileWriter("./coap_udp_perf_log.csv", false), ';');
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}	
 		this.inetAddress = inetAddress;
 			
 		this.socket = new DatagramSocket( port, inetAddress);
@@ -152,7 +158,8 @@ public class UDPLayer extends AbstractLayer {
 		receiverThread.setDaemon(daemon);
 
 		// start listening right from the beginning
-		this.receiverThread.start();
+		//this.receiverThread.start();
+		executor.execute(receiverThread);
 	}
 
 
@@ -279,7 +286,13 @@ public class UDPLayer extends AbstractLayer {
 	@Override
 	protected void doReceiveMessage(Message msg) {
 		numRequest++;
-		if(numRequest == 1000){
+		
+		// pass message to registered receivers
+		deliverMessage(msg);
+		
+		System.out.println("############## Received Message! numRequest: " + numRequest);
+		if(numRequest >= 1000){
+			System.out.println("!!!!!!!!!!!! Creating logs.");
 			long totalCPUTime = 0;
 			System.out.println("Shutdown called!");
 			synchronized(workerThreads){
@@ -303,6 +316,12 @@ public class UDPLayer extends AbstractLayer {
 			}
 			executor.shutdown();
 			perfLog.close();
+			try {
+				Thread.sleep(5000);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 			System.exit(0);
 		}
 		if (LOG.getLevel() == Level.FINEST) {
@@ -312,8 +331,6 @@ public class UDPLayer extends AbstractLayer {
 			System.out.println();
 		}
 
-		// pass message to registered receivers
-		deliverMessage(msg);
 	}
 
 	@Override
@@ -351,6 +368,9 @@ public class UDPLayer extends AbstractLayer {
 
 		@Override
 		public void run() {
+			synchronized(workerThreads){
+				workerThreads.add(Thread.currentThread());
+			}
 			// always listen for incoming datagrams
 			while (true) {
 
