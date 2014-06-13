@@ -185,7 +185,6 @@ public class MultiInterfaceUDPLayer extends AbstractLayer {
 				}
 			}
 		}
-
 	}
 
 	@Override

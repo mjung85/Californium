@@ -40,7 +40,7 @@ public class PcapGroupCommHandler<String> extends AbstractLayer implements
 		
 	private volatile int numRequest = 0;
 
-	public PcapGroupCommHandler(int port, Pcap pcac) {
+	public PcapGroupCommHandler(int port, Pcap pcap) {
 		if(port != 0)
 			this.port = port;
 		
