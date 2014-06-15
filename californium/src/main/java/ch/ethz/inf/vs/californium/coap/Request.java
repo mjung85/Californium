@@ -183,8 +183,9 @@ public class Request extends Message {
 	public void execute() throws IOException {
 
 		// TODO reset response, requires new MID
-		
-		send();
+		if(!send()){
+			throw new IOException();
+		}
 
 		// TODO: LocalEndPoint stubs?
 	}

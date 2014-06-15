@@ -906,7 +906,7 @@ public class Message {
 		requiresToken = value;
 	}
 
-	public void send() {
+	public boolean send() {
 		try {
 			// TODO is request / response always mapped to client / server
 			// only clients may switch between secured and unsecured communication stacks, server remains fixed according to the properties file
@@ -920,7 +920,9 @@ public class Message {
 			
 		} catch (IOException e) {
 			LOG.severe(String.format("Could not respond to message: %s\n%s", key(), e.getMessage()));
+			return false;
 		}
+		return true;
 	}
 
 	/**

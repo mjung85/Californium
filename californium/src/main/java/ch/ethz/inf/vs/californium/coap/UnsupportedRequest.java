@@ -7,7 +7,8 @@ public class UnsupportedRequest extends Request {
 	}
 	
 	@Override
-	public void send() {
+	public boolean send() {
 		LOG.severe("Cannot send UnsupportedRequest");
+		return false;
 	}
 }
