@@ -90,6 +90,10 @@ public class MultiInterfaceUDPLayer extends AbstractLayer {
 
 		PCAP_IF = Properties.std.getProperty("iotsys.gateway.pcap.if", "eth0");
 		MCAST_ENABLED = Boolean.parseBoolean(Properties.std.getProperty("iotsys.gateway.mcast", "true"));
+		
+		log.info("PCACP_ENABLED: " + PCAP_ENABLED);
+		log.info("PCAP_IF: " + PCAP_IF);
+		log.info("MCAST_ENABLED: " + MCAST_ENABLED);
 
 		// for multicast group communication use
 		// pcap or multicast datagram sockets
@@ -192,8 +196,13 @@ public class MultiInterfaceUDPLayer extends AbstractLayer {
 	protected void doSendMessage(Message msg) throws IOException {
 		if (msg.getNetworkInterface() == null
 				|| udplayers.get(msg.getNetworkInterface()) == null) {
-			msg.setNetworkInterface(defaultUDPLayer.getInetAddress());
-			defaultUDPLayer.sendMessage(msg);
+			if(defaultUDPLayer != null){
+				msg.setNetworkInterface(defaultUDPLayer.getInetAddress());
+				defaultUDPLayer.sendMessage(msg);
+			}
+			else{
+				System.err.println("Default UDP Layer is not set.");
+			}
 		} else {
 
 			udplayers.get(msg.getNetworkInterface()).sendMessage(msg);

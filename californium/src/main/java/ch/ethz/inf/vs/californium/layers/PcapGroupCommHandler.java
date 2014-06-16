@@ -59,6 +59,7 @@ public class PcapGroupCommHandler<String> extends AbstractLayer implements
 					{
 						
 						log.info("Received multicast message through PCAP (over tunnel adapter)s.");
+						log.info("destIPv6: " + destIpv6 + " srcIPv6: " + srcIpv6);
 						RequestReceiver recv = new RequestReceiver(destIpv6, srcIpv6, srcPort, payload);
 						recv.start();
 					}
